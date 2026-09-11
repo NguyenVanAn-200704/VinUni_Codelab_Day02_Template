@@ -1,93 +1,103 @@
-# 📄 02 — Deep-Dive Report: Xanh SM – Sự cố hết pin (Battery-Drain Emergency Dispatch)
+# 02 — Deep-Dive Report (Nhóm)
 
-> * **Autor draftu:** Nguyen Van An (branch `An`) — draft do wspólnej dyskusji zespołu i ewentualnego wgrania do `main` przez Trưởnga
-> * **Treść zgodnie z:** `01-worksheet.md` → Phase 3 (DEEP-DIVE) + Phase 5 (EVALUATE)
-> * **Karta wybrana:** Card #1 (Xanh SM — awaria baterii taksówki EV na trasie)
-
----
-
-## 🏗️ Phase 3 — DEEP-DIVE
-
-### 3.1. Current-State Workflow Mapping
-
-Quy trình xử sự cố hết pin thực địا hiện tại (obsługa awarii baterii na trasie) w Trung tâm Điều vận Xanh SM:
-
-```text
-B1: Odebranie zgłoszenia od tài xë (tel/App)      Ai: Dispatcher   ⏱ 2 min
-        │
-        ▼
-B2: Pozycja GPS auta (manual lookup)              Ai: Dispatcher   ⏱ 2 min
-        │
-        ▼
-B3: Szukanie wolnej stacji sạc VinFast 🔴         Ai: Dispatcher   ⏱ 5 min
-        │
-        ▼
-B4: Pisanie instrukcji SMS/App dla kierowcy 🔴     Ai: Dispatcher   ⏱ 5 min
-        │
-        ▼
-B5: Telefon po pomoc drogową, gdy pin < 5%         Ai: Dispatcher   ⏱ 1 min
-
-🔄 Handoff: B1→B2 (telefon/systemy)  •  B4→B5 (system/telefon)
-🔴 = Bottleneck: B3 + B4 = 10 min ręcznej pracy ze 15 min całkowitych
-⏱ Tổng czas obsługi ręcznej: 15 min/zgłoszenie (~80 zgłoszeń/dzień, Hà Nội)
-```
-
-### 3.2. Problem Statement (6-field) — standard Vin Smart Future
-
-| # | Pole | Treść |
-|---|------|-------|
-| **1. Actor / Operator** | Điều phối viń (Dispatcher) w Trung tâm Điều vân Xanh SM oraz Tài xë (kierowca EV) na trasie. |
-| **2. Current Workflow** | Gdy kierowca zgłasza rozładowaną baterię, dyspozytor: sprawdza pozycję GPS, otwiera dashboard stacji VinFast, ręcznie znajduje wolną stację pasującą do modelu (VF5/VFe34/VF8), pisze instrukcję SMS/App i — przy pin < 5% — dzwoni po pomoc drogową. 5 kroków, w 100% ręcznie, średnio 15 min/zgłoszenie. |
-| **3. Bottleneck** | Krok B3+B4 (ok. 10 min): ręczne przeszukiwanie wolnych stacji + pisanie szczegółowej instrukcji w przyjaznym języku. Błąd = polecenie stacji niekompatybilnej lub zbyt odległej → ryzyko zatrzymania auta na trasie. |
-| **4. Business Impact** | Ok. 80 zgłoszeń/dzień w Hà Nội → ok. 20 godzin pracy zespołu dziennie na ręczną obsługę; wydłużony czas oczekiwania kierowcy → utrata przychodów (~15% kursów) i stres kierowców. |
-| **5. Success Metric** | 1) Czas obsługi zgłoszenia: 15 min → **poniżej 3 min** (Efficiency). 2) Poprawność wskazanej stacji (właściwe miejsce + właściwy typ ładowania dla modelu): **98%** (Quality). |
-| **6. Operational Boundary** | AI ma prawo: pobierać pozycję auta (API GPS), sprawdzać wolne stacje VinFast (API), generować draft instrukcji. **ZABRONIONE:** automatyczne wysyłanie wiadomości bez pisemnej zgody dyspozytora (obowiązkowy HITL); proponowanie stacji niekompatybilnej z gniazdem ładowania; proponowanie stacji > 5 km przy pin < 5% (wymagany `dispatch_mobile_charger`). |
-
-### 3.3. Future-State Flow & AI Fit
-
-* **AI-Fit Matrix:** [ ] Rule / State-Machine · **[x] LLM Feature** · [ ] Agentic Loop
-  *(LLM Feature, bo proces ma stałą, przewidywalną strukturę, a ryzyko błędu przy krytycznym pinie jest wysokie — pełny agent autonomiczny byłby nieuzasadniony.)*
-
-```text
-B1: Odebranie zgłoszenia      Ai: Dispatcher        ⏱ 1 min
-        │
-        ▼
-B2: 🔵 AI auto-pobiera pozycję GPS + wolne stacje  Ai: LLM + API   ⏱ <1 min
-        │
-        ▼
-B3: 🔵 AI generuje draft SMS z [DRAFT_ONLY]        Ai: Gemini 2.5  ⏱ <1 min
-        │
-        ▼
-B4: 🟢 Dyspozytor zatwierdza draft i klika WYŚLIJ  Ai: HITL        ⏱ 1 min
-        │
-        ▼
-    Wysyłka do tài xë (SMS/App)
-
-↩️ Fallback: jeśli AI zwróci błąd/niepewność → dyspozytor obsługuje ręcznie (tryb „as-is"),
-   bez utraty bezpieczeństwa (manual_review, bez automatycznej wysyłki).
-```
-
-* 🔵 **AI Step:** pobranie danych (pozycja + wolne stacje) oraz wygenerowanie draftu wiadomości w formacie JSON.
-* 🟢 **Human Step (HITL):** dyspozytor zatwierdza draft i dopiero on wysyła wiadomość do kierowcy.
-* ↩️ **Fallback:** przy błędzie AI (timeout, zła stacja, niepewność) asystent zwraca `manual_review`, a dyspozytor obsługuje zgłoszenie ręcznie — bez utraty bezpieczeństwa.
+**Nhóm:** [Nguyễn Văn An]
+**Bài toán chọn Deep-Dive:** Xanh SM — Xử lý khiếu nại "tài xế đi vòng / lộ trình không tối ưu"
+**Nguồn gốc:** Card #1 trong `01-problem-scan.md`
 
 ---
 
-## 🏁 Phase 5 — EVALUATE
+## 3.1. Current-State Workflow
 
-### AI Readiness Checklist
+Quy trình xử lý khiếu nại lộ trình hiện tại của nhân viên CSKH Xanh SM:
 
-- [x] **1. Danne testowe/logi:** Centrum Xanh SM ma dzienniki zgłoszeń (call logs, ślady GPS, historię stacji) — dostępne do pilotażu.
-- [x] **2. Ryzyko błędu AI w kontroli:** błąd AI jest ograniczony przez obowiązkowy HITL (żadnej automatycznej wysyłki) i fallback `manual_review` — ryzyko w akceptowalnych granicach.
-- [x] **3. Gotowość stakeholderów:** dyspozytorzy widzą realną ulgę (20h/dzień) i są gotowi na zmianę procesu w pilocie.
+```text
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│ Bước 1       │     │ Bước 2       │     │ Bước 3       │     │ Bước 4       │
+│ Nhận ticket  │     │ Tra cứu lộ   │     │ So sánh thủ  │     │ Soạn phản    │
+│ khiếu nại    │ ──→ │ trình GPS    │ ──→ │ công với     │ ──→ │ hồi gửi khách│
+│              │     │ thực tế      │     │ route ngắn   │     │              │
+│              │     │              │     │ nhất (GG Map)│     │              │
+│ Ai: CSKH     │     │ Ai: CSKH     │     │ Ai: CSKH     │     │ Ai: CSKH     │
+│ ⏱ 2 phút     │     │ ⏱ 5 phút 🔴  │     │ ⏱ 5 phút 🔴  │     │ ⏱ 3 phút     │
+│ In: Ticket   │     │ In: Mã chuyến│     │ In: Toạ độ   │     │ In: % lệch   │
+│ App/Hotline  │     │ Out: Toạ độ  │     │ lộ trình     │     │ Out: Tin nhắn│
+│ Out: Log     │     │ lộ trình     │     │ Out: % lệch  │     │ phản hồi     │
+│ khiếu nại    │     │ thực tế      │     │ ước tính     │     │              │
+└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
+                                                                      │
+                                                          Nếu % lệch > 15%       ▼
+                                                          🔄 Handoff ──→ ┌──────────────┐
+                                                                        │ Bước 5       │
+                                                                        │ Chuyển hồ sơ │
+                                                                        │ cho Trưởng ca│
+                                                                        │ duyệt hoàn   │
+                                                                        │ tiền         │
+                                                                        │ Ai: Trưởng ca│
+                                                                        │ ⏱ ~1 ngày    │
+                                                                        │ (xử lý theo  │
+                                                                        │ batch)       │
+                                                                        └──────────────┘
 
-### Decyzja Zarządu Vin Smart Future
+🔴 = Bottleneck   🔄 = Handoff (chuyển giao giữa CSKH và Trưởng ca)
+⏱ Tổng thời gian xử lý thủ công (không tính escalation): 15 phút/ticket.
+⏱ Nếu có escalation hoàn tiền: cộng thêm tới 1 ngày chờ duyệt.
+```
 
-**[x] GO (Bắt đầu budować Prototype)** — start pilotażu z wąskim zakresem (Hà Nội, flota VF8, godziny szczytu).
+---
 
-### Justification (dlaczego GO?)
+## 3.2. Problem Statement (6-field)
 
-1. **Problem konkretny i mierzalny:** 80 zgłoszeń/dzień, 20h ręcznej pracy dziennie, 15 min → < 3 min, poprawność 98% — metryki jednoznacznie weryfikowalne.
-2. **Technologia prosta i bezpieczna:** LLM Feature (nie pełny agent) + obowiązkowy HITL + fallback `manual_review` — niski koszt wdrożenia, ograniczone ryzyko operacyjne.
-3. **Granice bezpieczeństwa przetestowane promptowo:** ataki adversarial (krytyczny pin + daleka stacja, obejście [DRAFT_ONLY], obejście HITL przez „autorytet") zostały odparte przez SYSTEM_PROMPT — prototyp potwierdził wytrzymałość granic (patrz `starter-code/prompt_prototype.py` i `03-ai-log.md`).
-4. **NOT YET / NO-GO odrzucone:** dane testowe już istnieją (logi) — brak powodu do czekania; rule-based samo nie wystarczy, bo treść wiadomości wymaga naturalnego języka i personalizacji, co potwierdza potrzebę LLM (a nie NO-GO).
+| Field                       | Nội dung                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Actor / Operator**     | Nhân viên CSKH (Customer Service) thuộc Trung tâm Chăm sóc Khách hàng Xanh SM, và Trưởng ca khi cần duyệt hoàn tiền.                                                                                                                                                                                                                                                                                                                              |
+| **2. Current Workflow**     | Khi khách khiếu nại tài xế đi vòng, CSKH tra lại lộ trình GPS thực tế của chuyến trên hệ thống nội bộ, mở Google Maps để so sánh thủ công với route ngắn nhất, ước lượng % lệch bằng mắt/tính tay, rồi soạn tin nhắn phản hồi. Nếu % lệch có vẻ lớn, hồ sơ được chuyển tay cho Trưởng ca duyệt hoàn tiền (xử lý theo batch cuối ngày). 4-5 bước, hoàn toàn thủ công, mất 15 phút/ticket (chưa tính thời gian chờ duyệt hoàn tiền).                |
+| **3. Bottleneck**           | Bước 2 & 3 (mất 10 phút): Tra cứu lộ trình GPS thủ công và so sánh bằng tay với route tham chiếu trên Google Maps — không có công cụ tự động tính % lệch, dễ sai số theo cảm tính từng nhân viên.                                                                                                                                                                                                                                                 |
+| **4. Business Impact**      | Trung bình ~120 ticket khiếu nại lộ trình/ngày tại Hà Nội. Tổng thời gian xử lý thủ công ~30 giờ làm việc CSKH/ngày. Do đánh giá % lệch không nhất quán giữa các nhân viên, tỉ lệ khách khiếu nại lần 2 vì "trả lời không thoả đáng" ước tính ~20%, ảnh hưởng đến điểm hài lòng khách hàng (CSAT) và tăng tải cho Trưởng ca duyệt hoàn tiền.                                                                                                      |
+| **5. Success Metric**       | 1. Giảm thời gian xử lý ticket từ 15 phút xuống dưới 3 phút (Efficiency).<br>2. Độ chính xác tính % lệch route khớp với số liệu GPS thực tế đạt ≥ 98% (Quality).<br>3. Giảm tỉ lệ khách khiếu nại lần 2 từ 20% xuống dưới 10% (Customer Satisfaction).                                                                                                                                                                                            |
+| **6. Operational Boundary** | AI được phép: truy xuất log GPS chuyến đi, tự động tính % lệch so với route tham chiếu, soạn nháp phản hồi khách và đề xuất mức hoàn tiền tham khảo khi lệch > 15%. **CẤM:** AI không được tự động gửi phản hồi cho khách mà không có CSKH phê duyệt (Bắt buộc HITL); không được tự động phê duyệt/chuyển tiền hoàn — chỉ đề xuất, Trưởng ca vẫn phải duyệt; không được dùng ngôn từ quy kết tài xế gian lận/cố tình trong bất kỳ trường hợp nào. |
+
+---
+
+## 3.3. Future-State Flow & AI Fit
+
+- **AI Fit:** Chọn **LLM Feature** (không chọn Rule thuần vì cần AI đọc hiểu và diễn giải ngữ cảnh khiếu nại bằng ngôn ngữ tự nhiên; không chọn Agentic Loop vì quy trình có phạm vi hẹp, rủi ro tài chính khi tự động phê duyệt hoàn tiền sai cần được kiểm soát chặt bằng con người).
+- **Quy trình tương lai (Future-State):**
+
+```text
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│ Bước 1       │     │ 🔵 Bước 2    │     │ 🔵 Bước 3    │     │ 🟢 Bước 4    │
+│ Nhận ticket  │ ──→ │ Auto-pull GPS│ ──→ │ AI tính % lệch│──→ │ CSKH review  │
+│ khiếu nại    │     │ log & route  │     │ + draft phản │     │ & click duyệt│
+│              │     │ tham chiếu   │     │ hồi/đề xuất  │     │ gửi khách    │
+│              │     │              │     │ hoàn tiền    │     │              │
+└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
+                                                                      │
+                                                    Nếu đề xuất hoàn tiền (>15%)   ▼
+                                                    🔄 Handoff ──→ ┌──────────────┐
+                                                                  │ 🟢 Bước 5    │
+                                                                  │ Trưởng ca    │
+                                                                  │ duyệt hoàn   │
+                                                                  │ tiền cuối    │
+                                                                  └──────────────┘
+
+↩️ Fallback: Nếu dữ liệu GPS bị thiếu/lỗi hoặc AI không tự tin (confidence thấp),
+   hệ thống trả về "cần xử lý thủ công" và CSKH quay lại quy trình cũ 4 bước.
+```
+
+---
+
+## Phase 5 — EVALUATE
+
+### AI Readiness Checklist:
+
+- [x] Chúng tôi có sẵn dữ liệu mẫu/logs sạch để test? — Có, log GPS chuyến đi đã được lưu trữ sẵn trong hệ thống điều vận.
+- [x] Rủi ro khi AI sai có nằm trong tầm kiểm soát (qua HITL hoặc Fallback)? — Có: CSKH luôn duyệt trước khi gửi (Bước 4); Trưởng ca luôn duyệt hoàn tiền cuối cùng (Bước 5); có fallback về quy trình thủ công khi dữ liệu thiếu.
+- [x] Stakeholders sẵn sàng thay đổi quy trình làm việc cũ? — Có, đã trao đổi sơ bộ với leader CSKH, họ ủng hộ vì giảm tải công việc lặp lại.
+
+### Quyết định cuối cùng:
+
+**[x] GO (Bắt đầu xây dựng Prototype)** — với scope hẹp: chỉ tự động hoá bước tính % lệch route và soạn nháp phản hồi; KHÔNG tự động hoá việc phê duyệt hoàn tiền.
+
+**Justification:**
+
+> Bài toán có metric rõ ràng (% lệch route có thể tính bằng dữ liệu GPS sẵn có), rủi ro tài chính được kiểm soát chặt qua 2 lớp HITL (CSKH duyệt tin nhắn, Trưởng ca duyệt hoàn tiền), và giải pháp LLM Feature đơn giản (không cần Agent tự trị) đã đủ để giải quyết bottleneck chính là bước so sánh route thủ công. Kết quả stress-test trong `starter-code/prompt_prototype.py` cho thấy ranh giới an toàn ([DRAFT_ONLY], ngưỡng 15%, cấm ngôn từ buộc tội) đứng vững trước 3 kịch bản tấn công prompt khác nhau — đủ cơ sở để tiến hành xây dựng prototype ở quy mô nhỏ trước khi mở rộng.

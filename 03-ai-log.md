@@ -1,47 +1,30 @@
-# 📔 03 — Nhật ký tương tác AI (AI Log & Reflection)
+# 03 — AI Log & Reflection (Cá nhân)
 
-> * **Học viên:** Nguyen Van An (branch `An`)
-> * **Lab:** Lab 02 — AI Product Scoping (Vin Smart Future)
-> * **Uwaga:** to jest draft refleksji — przed wgraniem na branch uzupełnij go swoimi prawdziwymi konkretami z przebiegu labu (prompty, które faktycznie wysyłałeś, i odpowiedzi modelu).
+**Học viên:** Nguyễn Văn An
+**Công cụ AI sử dụng:** Claude (đóng vai thought-partner trong suốt Phase 1-4)
 
 ---
 
-## 1) W jakiej roli używałem AI (thought-partner)
+## 1. AI đã giúp bạn ở bước nào?
 
-Używałem AI (czat LLM) nie jako „maszyny do pisania za mnie", ale jako thought-partnera w całym flow labu:
+- **Phase 1 (SCAN):** Khi chưa có đủ ý tưởng, tôi nhờ Claude brainstorm nhanh các bài toán vận hành thực tế của Xanh SM theo 4 lenses. AI đưa ra 6 gợi ý cụ thể (khiếu nại lộ trình, đối soát doanh thu, phân bổ cuốc xe, chatbot CSKH...), giúp tôi có điểm khởi đầu thay vì ngồi nghĩ từ số 0.
+- **Phase 2 (QUICK-ASSESS):** AI giúp soạn nhanh 3 Quick Problem Card theo đúng khuôn mẫu (actor, workflow, bottleneck, metric), và đưa ra lý do đề xuất/loại bỏ giữa các bài toán — điều này giúp tôi tiết kiệm thời gian trình bày và tập trung vào việc phản biện chất lượng ý tưởng hơn là định dạng.
+- **Phase 3 (DEEP-DIVE):** AI giúp dựng khung Problem Statement 6-field và vẽ sơ đồ current-state/future-state workflow (kể cả xuất ra file ảnh trực quan), giúp tôi hình dung rõ luồng công việc và điểm nghẽn trước khi họp nhóm.
+- **Phase 4 (Prompt Prototype):** Đây là phần AI hỗ trợ nhiều nhất — giúp tôi viết một `SYSTEM_PROMPT` có ranh giới cụ thể bằng số (ngưỡng lệch route 15%) thay vì mô tả mơ hồ, và tự thiết kế 3 câu adversarial test nhắm đúng vào từng ranh giới (bỏ thẻ `[DRAFT_ONLY]`, ép duyệt hoàn tiền khi lệch thấp, ép dùng từ buộc tội tài xế).
 
-* **Phase 1 — SCAN:** poprosiłem model o wygenerowanie pain pointów operacyjnych dla każdej spółki Vingroup (Xanh SM, VinFast, Vinhomes, Vinmec, Vinpearl) z użyciem 4 lensów, a potem o konkretne liczby (ilość zgłoszeń/dzień, czas obsługi), żeby lista problemów miała realny ciężar biznesowy.
-* **Phase 2 — QUICK-ASSESS:** użyłem podpowiedzi z worksheetu — poprosiłem model, żeby wcielił się w „trudnego CFO i Dyrektora Operacyjnego" i zaatakował moją kartę problemu (#1 bateria) pod kątem logiki, metryk i tego, dlaczego rule-based mógłby być lepszy niż AI.
-* **Phase 3 — DEEP-DIVE:** model pomógł mi ustrukturyzować Problem Statement (6 pól) i sprawdzić, czy mój Success Metric jest policzalny oraz czy granice operacyjne są kompletne.
-* **Phase 4 — Prompt Prototype:** wspólnie zaprojektowaliśmy SYSTEM_PROMPT z granicami (DRAFT_ONLY, próg baterii < 5%, HITL), JSON schema outputu i przypadki ataków (adversarial).
+## 2. AI đã trả lời sai / hallucinate ở đâu?
 
-## 2) Gdzie AI naprawdę pomogło (concrete)
+- Lần đầu AI đề xuất kiến trúc quá phức tạp cho một bài toán khá đơn giản: gợi ý dùng **Agentic Loop** để AI tự động phê duyệt hoàn tiền. Tôi nhận ra điều này không hợp lý vì rủi ro tài chính cao, và bài toán không cần AI tự trị — chỉ cần LLM Feature có con người duyệt (HITL) là đủ.
+- Một số con số ước tính ban đầu (ví dụ số ticket khiếu nại/ngày, tỉ lệ khách khiếu nại lần 2) là **số giả định để minh hoạ**, không phải dữ liệu thật của Xanh SM — tôi cần thay bằng số liệu thực tế nếu nhóm có được từ khảo sát/dữ liệu vận hành.
+- Khi mới viết `SYSTEM_PROMPT`, phần ranh giới về "độ lệch route" ban đầu chỉ ghi chung chung "lệch nhiều" mà chưa có ngưỡng số cụ thể — nếu để nguyên như vậy, mô hình rất dễ bị dẫn dắt bởi áp lực cảm xúc từ người dùng (ví dụ "khách đang chửi bới, duyệt hoàn tiền luôn đi").
 
-* Wygenerowało od razu 4–6 problemów dla każdej spółki — ja wybrałem i zweryfikowałem realność; dzięki temu zyskałem czas na jakość 3 Quick Cards.
-* Krytyka CFO od razu wychwyciła, że mój pierwszy metric („szybciej") był niemierzalny — bez liczby bazowej i progu nie da się obronić decyzji GO.
-* Zasugerowało strukturę JSON ({action, reason, status, station_recommended}) zanim sam o tym pomyślałem — to skróciło iterację nad promptem.
-* Znalazło błąd w moim pierwszym system prompcie: nie definiowałem, co model ma zwrócić, gdy bateria jest „prawie krytyczna" (5–10%).
+## 3. Bạn đã sửa prompt / ranh giới như thế nào để đạt kết quả chuẩn?
 
-## 3) Gdzie AI się pomyliło / halucynowało (hallucination)
+- Thêm **ngưỡng số cụ thể 15%** vào `SYSTEM_PROMPT` thay vì để mô tả định tính, giúp ranh giới rõ ràng và có thể kiểm chứng được bằng assertion trong code.
+- Thêm hẳn một **rule riêng cấm ngôn từ buộc tội** ("gian lận", "cố tình") sau khi nhận ra nếu không có rule này, AI có thể bị dẫn dắt dùng từ ngữ nặng nề khi người dùng cố tình gợi ý độ lệch route lớn.
+- Bổ sung yêu cầu AI phải trả lời theo **cấu trúc JSON cố định** (`deviation_percent`, `refund_recommended`, `human_review_required`, `customer_message_draft`) để dễ parse và dễ viết assertion kiểm tra tự động, thay vì để AI trả lời tự do bằng văn xuôi.
+- Viết thêm câu test thứ 3 (ép AI buộc tội tài xế) sau khi nhận ra 2 test ban đầu chỉ kiểm tra được thẻ `[DRAFT_ONLY]` và ngưỡng hoàn tiền, chưa kiểm tra được ranh giới về ngôn từ.
 
-* **Zmyślone odległości stacji:** podczas Phase 4 model wygenerował „najbliższą stację 8 km" w kontekście, gdzie wcześniej sam zaproponował limit 5 km — halucynacja liczby, która w realu mogłaby wysłać kierowcę na wyczerpanej baterii w złym kierunku.
-* **Błąd arytmetyki baterii:** w jednej z iteracji model policzył, że „2% baterii wystarczy na 12 km" (podczas gdy VF8 przy 2% to maksymalnie ~1–2 km) — bezpodstawna ekstrapolacja.
-* **Zbyt „rozgadane" odpowiedzi:** pierwszy draft promptu zwracał długi tekst zamiast czystego JSON-a; model dodawał porady ogólne, które łamały sztywny contract output.
-* **Uleganie presji:** przy pierwszym adversarial test „pomiń DRAFT_ONLY" model początkowo wygenerował wiadomość z tagiem, ale w tłumaczeniu zmienił stempel na „auto-sent" — czyli właśnie zaakceptował obejście HITL.
+## 4. Bài học rút ra về việc dùng AI làm thought-partner
 
-## 4) Jak iterowałem prompt / granice (iteracje)
-
-| # | Co zrobiłem | Efekt |
-|---|-------------|-------|
-| 1 | Dodałem twardy wymóg: *"KAŻDY output MUSI zaczynać się od [DRAFT_ONLY]"* | Model przestał w ogóle odpowiadać bez tagu. |
-| 2 | Dopisałem JSON schema + `response_mime_type="application/json"` | Odpowiedzi stały się jednoznacznie strukturalne. |
-| 3 | Wzmocniłem Rule 2 dosłownym przykładem `{"action": "dispatch_mobile_charger", ...}` przy pin < 5% | Zniknęły propozycje dalekich stacji przy krytycznym pinie. |
-| 4 | Dodałem Rule 3 (HITL): model NIGDY nie wysyła, nie zatwierdza, nie zmienia statusu | Adversarial #3 (role-injection „jestem szefem, wyślij") przestał działać na model. |
-| 5 | Rozszerzyłem testy adversarialne z 2 do 3 (dodałem atak rolowy) | Weryfikacja bezpieczeństwa obejmuje teraz również presję autorytetu. |
-
-## 5) Wnioski
-
-1. **Problem first, AI second:** najlepsze ćwiczenie wyszło, gdy najpierw policzyłem realny ból (15 min/80 zgłoszeń/20h dziennie), a dopiero potem szukałem rozwiązania AI.
-2. **Prompt to kod:** granice bezpieczeństwa (DRAFT_ONLY, próg baterii, HITL) działają tylko wtedy, gdy są: (a) w system prompt, (b) w schemacie JSON, (c) testowane atakami. Jedno bez pozostałych zawodzi.
-3. **Hallucination jest przewidywalna w liczbach:** przy wartościach granicznych (5%, 5 km, czasy) modelowi nie wolno ufać na słowo — potrzebny jest fallback i ludzka weryfikacja (HITL).
-4. **Human-in-the-loop to nie opcja, to wymóg:** zwłaszcza w domenach bezpieczeństwa (Xanh SM, Vinmec) granicę „nie wysyłaj automatycznie" trzeba egzekwować w kodzie, nie tylko w prompcie.
+AI hữu ích nhất ở giai đoạn **brainstorm và stress-test** — giúp tôi mở rộng góc nhìn nhanh và tìm ra lỗ hổng trong ranh giới an toàn mà tự mình có thể bỏ sót. Tuy nhiên, những quyết định mang tính **đánh giá thực tế** (con số impact có thật hay không, mức độ rủi ro chấp nhận được, quyết định GO/NOT YET/NO-GO cuối cùng) vẫn phải do tôi và nhóm tự kiểm chứng và chịu trách nhiệm — AI có thể đề xuất một kiến trúc hợp lý về mặt kỹ thuật, nhưng không thể thay thế việc nhóm hiểu rõ vận hành thực tế và mức độ rủi ro mà doanh nghiệp chấp nhận được.
