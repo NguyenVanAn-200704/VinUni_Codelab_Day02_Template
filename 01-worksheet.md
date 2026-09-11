@@ -63,11 +63,11 @@ Hãy sử dụng **4 Lenses** dưới đây để quét qua hoạt động vận
 ### 📝 List bài toán của tôi:
 | # | Subsidiary (VinFast/Xanh SM...) | Lens | Mô tả ngắn bài toán |
 |---|----------------------------------|------|---------------------|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
+| 1 | **VinFast** | Lặp lại | Tiếp nhận xe, đọc mã lỗi chẩn đoán (DTC) từ máy quét và tra cứu thủ công để lập báo giá bảo dưỡng định kỳ. |
+| 2 | **VinFast** | Tốn thời gian | Phân tích dữ liệu log ECU/BMS để tìm nguyên nhân gốc rễ (root cause) các lỗi phần mềm phức tạp và chập chờn điện/pin. |
+| 3 | **VinFast** | AI có thể tốt hơn | Tận dụng Telematics thu thập dữ liệu thời gian thực để Dự đoán bảo trì (Predictive Maintenance) và chuẩn bị phụ tùng trước khi khách đến xưởng. |
+| 4 | **VinFast** | Pain từ người khác | Cố vấn dịch vụ bị khách hàng phàn nàn/hối thúc trong khi phải chờ phản hồi từ đội ngũ R&D (lỗi firmware mới) và chờ kho điều chuyển phụ tùng. |
+| 5 | **VinFast** | Tốn thời gian | Tra cứu thủ công các tài liệu sổ tay kỹ thuật PDF của R&D để xác định linh kiện tương thích và lập quy trình sửa chữa chuẩn. |
 
 ---
 
@@ -75,26 +75,102 @@ Hãy sử dụng **4 Lenses** dưới đây để quét qua hoạt động vận
 
 Chọn **top 3 bài toán** từ danh sách trên và hoàn thiện **3 Quick Problem Cards** dưới đây (10 phút/card).
 
-```
+### 1. QUICK PROBLEM CARD #1: Hỗ trợ Cố vấn dịch vụ chẩn đoán mã lỗi DTC & Lập báo giá
+
+```text
 ┌─────────────────────────────────────────────────────────────┐
-│ QUICK PROBLEM CARD #___                                     │
+│ QUICK PROBLEM CARD #1                                       │
 │                                                             │
-│ Bài toán (1 câu): ________________________________________  │
-│ Công ty thành viên: [ ] VinFast  [ ] Xanh SM  [ ] Vinhomes  │
+│ Bài toán (1 câu): Trợ lý AI tự động chẩn đoán mã lỗi DTC,   │
+│ tra cứu tài liệu kỹ thuật R&D và lập nháp báo giá dịch vụ.  │
+│ Công ty thành viên: [x] VinFast  [ ] Xanh SM  [ ] Vinhomes  │
 │                     [ ] Vinmec   [ ] Khác (Ghi rõ)________  │
 │                                                             │
-│ Ai đang đau (Actor)? ______________________________________ │
+│ Ai đang đau (Actor)? Cố vấn dịch vụ (Service Advisor)       │
 │                                                             │
-│ Workflow thủ công hiện tại (3-5 bước):                      │
-│   1. ___ ──> 2. ___ ──> 3. ___ ──> 4. ___                   │
+│ Workflow thủ công hiện tại (4 bước):                        │
+│   1. Tiếp nhận xe & cắm máy đọc mã lỗi DTC                  │
+│   ──> 2. Tra cứu thủ công tài liệu kỹ thuật PDF của R&D     │
+│   ──> 3. Kiểm tra mã phụ tùng & tồn kho trên phần mềm ERP   │
+│   ──> 4. Soạn bảng báo giá & thời gian sửa chữa cho khách   │
 │                                                             │
-│ Bước nào tốn thời gian/lỗi nhất? ___ (⏱ ___ phút/lượt)      │
-│ AI có thể nhảy vào hỗ trợ ở bước nào? _____________________ │
+│ Bước nào tốn thời gian/lỗi nhất? Bước 2 & 3 (⏱ 25 phút/lượt)│
+│ AI có thể nhảy vào hỗ trợ ở bước nào? Bước 2, 3 & 4         │
+│ (Mapping tự động DTC -> Phụ tùng và Draft nhanh báo giá)    │
 │                                                             │
-│ Đo thành công bằng gì (Metric có số)? ______________________ │
-│   VD: "Giảm thời gian soạn phản hồi từ 10 min ──> under 2 min"│
+│ Đo thành công bằng gì (Metric có số)?                        │
+│ Giảm thời gian chẩn đoán nháp & lập báo giá từ 30 phút      │
+│ ──> dưới 5 phút/xe; Độ chính xác gợi ý phụ tùng đạt >= 95%. │
 │                                                             │
-│ Quick Architecture: [ ] No AI  [ ] Rule  [ ] LLM  [ ] Agent │
+│ Quick Architecture: [ ] No AI  [ ] Rule  [x] LLM  [ ] Agent │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 2. QUICK PROBLEM CARD #2: Phân tích log xe & Khoanh vùng nguyên nhân gốc rễ lỗi phần mềm/pin
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ QUICK PROBLEM CARD #2                                       │
+│                                                             │
+│ Bài toán (1 câu): Phân tích log dữ liệu ECU/BMS đa nguồn để │
+│ khoanh vùng nguyên nhân gốc rễ (Root Cause) lỗi chập chờn.  │
+│ Công ty thành viên: [x] VinFast  [ ] Xanh SM  [ ] Vinhomes  │
+│                     [ ] Vinmec   [ ] Khác (Ghi rõ)________  │
+│                                                             │
+│ Ai đang đau (Actor)? Kỹ thuật viên chẩn đoán bậc cao & R&D  │
+│                                                             │
+│ Workflow thủ công hiện tại (4 bước):                        │
+│   1. Trích xuất file log ECU/BMS dung lượng lớn từ xe       │
+│   ──> 2. Kỹ thuật viên lọc thủ công hàng nghìn dòng event   │
+│   ──> 3. Soạn ticket mô tả lỗi gửi đội R&D phần mềm / pin   │
+│   ──> 4. R&D phân tích và phản hồi hướng xử lý/bản vá      │
+│                                                             │
+│ Bước nào tốn thời gian/lỗi nhất? Bước 2 & 4 (⏱ 120 phút đọc │
+│ log + chờ phản hồi từ R&D mất từ 24h - 48h)                 │
+│ AI có thể nhảy vào hỗ trợ ở bước nào? Bước 2 & 3            │
+│ (Tự động phát hiện bất thường trong log & gợi ý Root Cause) │
+│                                                             │
+│ Đo thành công bằng gì (Metric có số)?                        │
+│ Giảm thời gian phân tích log từ 120 phút ──> dưới 15 phút;  │
+│ Giảm 60% số lượng ticket phải chuyển lên R&D xử lý.         │
+│                                                             │
+│ Quick Architecture: [ ] No AI  [ ] Rule  [ ] LLM  [x] Agent │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 3. QUICK PROBLEM CARD #3: Dự đoán bảo trì & Chuẩn bị phụ tùng từ xa qua Telematics
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ QUICK PROBLEM CARD #3                                       │
+│                                                             │
+│ Bài toán (1 câu): Giám sát dữ liệu Telematics xe theo thời   │
+│ gian thực để dự đoán hỏng hóc sớm và điều phối phụ tùng sẵn.│
+│ Công ty thành viên: [x] VinFast  [ ] Xanh SM  [ ] Vinhomes  │
+│                     [ ] Vinmec   [ ] Khác (Ghi rõ)________  │
+│                                                             │
+│ Ai đang đau (Actor)? Điều phối xưởng & Quản lý kho phụ tùng │
+│                                                             │
+│ Workflow thủ công hiện tại (4 bước):                        │
+│   1. Xe phát sinh hỏng hóc thực địa, khách mang đến xưởng   │
+│   ──> 2. Xưởng kiểm tra kho phụ tùng xem có sẵn linh kiện   │
+│   ──> 3. Nếu thiếu, làm lệnh điều chuyển từ kho tổng (1-3 d)│
+│   ──> 4. Khách hàng phải gửi xe lại xưởng chờ phụ tùng về   │
+│                                                             │
+│ Bước nào tốn thời gian/lỗi nhất? Bước 2 & 3                 │
+│ (⏱ Thời gian chờ luân chuyển linh kiện mất 24h - 72h)       │
+│ AI có thể nhảy vào hỗ trợ ở bước nào? Bước 1 & 2            │
+│ (Phát hiện suy hao sớm 5-7 ngày và tự động reserve phụ tùng)│
+│                                                             │
+│ Đo thành công bằng gì (Metric có số)?                        │
+│ Giảm tỷ lệ xe phải nằm chờ phụ tùng từ 25% ──> dưới 5%;     │
+│ Giảm 40% chi phí lưu kho đột xuất tại Service Center.       │
+│                                                             │
+│ Quick Architecture: [ ] No AI  [x] Rule/ML [ ] LLM [ ] Agent│
 └─────────────────────────────────────────────────────────────┘
 ```
 
