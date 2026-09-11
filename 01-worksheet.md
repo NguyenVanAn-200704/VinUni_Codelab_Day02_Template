@@ -62,12 +62,12 @@ Hãy sử dụng **4 Lenses** dưới đây để quét qua hoạt động vận
 
 ### 📝 List bài toán của tôi:
 | # | Subsidiary (VinFast/Xanh SM...) | Lens | Mô tả ngắn bài toán |
-|---|----------------------------------|------|---------------------|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
+|---|----------------------------------|------|----------------------|
+| 1 | Xanh SM | Forecasting / Optimization | Dự đoán nhu cầu theo giờ/khu vực để tối ưu điều phối (dispatch), giảm tỷ lệ xe chạy rỗng đang ở mức 15-25% |
+| 2 | Xanh SM | Optimization / Resource Allocation | Cân bằng tải trạm đổi pin theo khung giờ cao điểm, giảm thời gian chờ 10-15 phút/lượt |
+| 3 | Xanh SM | Predictive Maintenance | Bảo trì dự đoán dựa trên dữ liệu cảm biến (pin, phanh, truyền động) thay vì lịch cố định theo km/thời gian |
+| 4 | Xanh SM | NLP / Classification | Tự động phân loại & hỗ trợ soạn phản hồi khiếu nại CSKH, giảm 30-40% thời gian xử lý ticket |
+| 5 | Xanh SM | Anomaly Detection | Phát hiện gian lận cuốc xe/khuyến mãi và hành vi lái ẩu theo thời gian thực bằng mô hình ML |
 
 ---
 
@@ -77,24 +77,101 @@ Chọn **top 3 bài toán** từ danh sách trên và hoàn thiện **3 Quick Pr
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ QUICK PROBLEM CARD #___                                     │
-│                                                             │
-│ Bài toán (1 câu): ________________________________________  │
-│ Công ty thành viên: [ ] VinFast  [ ] Xanh SM  [ ] Vinhomes  │
-│                     [ ] Vinmec   [ ] Khác (Ghi rõ)________  │
-│                                                             │
-│ Ai đang đau (Actor)? ______________________________________ │
-│                                                             │
-│ Workflow thủ công hiện tại (3-5 bước):                      │
-│   1. ___ ──> 2. ___ ──> 3. ___ ──> 4. ___                   │
-│                                                             │
-│ Bước nào tốn thời gian/lỗi nhất? ___ (⏱ ___ phút/lượt)      │
-│ AI có thể nhảy vào hỗ trợ ở bước nào? _____________________ │
-│                                                             │
-│ Đo thành công bằng gì (Metric có số)? ______________________ │
-│   VD: "Giảm thời gian soạn phản hồi từ 10 min ──> under 2 min"│
-│                                                             │
-│ Quick Architecture: [ ] No AI  [ ] Rule  [ ] LLM  [ ] Agent │
+│ QUICK PROBLEM CARD #1                                         │
+│                                                                │
+│ Bài toán (1 câu): Dự đoán nhu cầu cuốc xe theo giờ/khu vực để │
+│ tối ưu điều phối, giảm tỷ lệ xe chạy rỗng (deadheading)       │
+│ Công ty thành viên: [ ] VinFast  [x] Xanh SM  [ ] Vinhomes    │
+│                     [ ] Vinmec   [ ] Khác (Ghi rõ)________    │
+│                                                                │
+│ Ai đang đau (Actor)? Tài xế (thu nhập giảm khi chạy rỗng),    │
+│ Bộ phận Operations/Dispatch (KPI hiệu suất đội xe)            │
+│                                                                │
+│ Workflow thủ công hiện tại (3-5 bước):                        │
+│   1. Tài xế bật app chờ cuốc ──> 2. Hệ thống ghép theo         │
+│   khoảng cách gần nhất (rule-based) ──> 3. Tài xế di chuyển    │
+│   đến điểm đón (có thể xa) ──> 4. Trả khách, quay lại chờ      │
+│                                                                │
+│ Bước nào tốn thời gian/lỗi nhất? Bước 2 - ghép cuốc không dự   │
+│ đoán cầu theo khu vực (⏱ cần đo baseline thật, chưa có số nội  │
+│ bộ — benchmark ngành: 15-25%, KHÔNG dùng làm target)           │
+│ AI có thể nhảy vào hỗ trợ ở bước nào? Bước 2 - forecasting     │
+│ cầu theo giờ/khu vực (time-series) + bài toán ghép cung-cầu    │
+│                                                                │
+│ Đo thành công bằng gì (Metric có số)? [CẦN ĐO BASELINE 2 TUẦN  │
+│ TRƯỚC] Giảm tỷ lệ deadheading X% so với baseline thực đo được; │
+│ tăng số cuốc/xe/ngày                                           │
+│                                                                │
+│ Quick Architecture: [ ] No AI  [x] Rule/OR  [ ] LLM  [ ] Agent │
+│ Ghi chú: Bài toán OR/matching + forecast (ARIMA/XGBoost),      │
+│ KHÔNG cần LLM — cần deterministic, audit được, chạy real-time  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ QUICK PROBLEM CARD #2                                         │
+│                                                                │
+│ Bài toán (1 câu): Bảo trì dự đoán dựa trên dữ liệu cảm biến    │
+│ xe điện thay vì lịch bảo dưỡng cố định theo km/thời gian       │
+│ Công ty thành viên: [ ] VinFast  [x] Xanh SM  [ ] Vinhomes     │
+│                     [ ] Vinmec   [ ] Khác (Ghi rõ)________     │
+│                                                                 │
+│ Ai đang đau (Actor)? Đội bảo trì/xưởng dịch vụ, tài xế         │
+│ (mất thu nhập khi xe downtime ngoài kế hoạch)                  │
+│                                                                 │
+│ Workflow thủ công hiện tại (3-5 bước):                         │
+│   1. Xe chạy đến mốc km/thời gian cố định ──> 2. Đặt lịch      │
+│   bảo dưỡng tại xưởng ──> 3. Kỹ thuật viên kiểm tra thủ công   │
+│   toàn bộ hạng mục ──> 4. Thay thế linh kiện theo checklist    │
+│                                                                 │
+│ Bước nào tốn thời gian/lỗi nhất? Bước 1 - lịch cố định không   │
+│ phản ánh tình trạng thực tế (⏱ cần đo % downtime ngoài kế      │
+│ hoạch thực tế + xác nhận không phải do thiếu phụ tùng tồn kho) │
+│ AI có thể nhảy vào hỗ trợ ở bước nào? Bước 1 - cảnh báo sớm từ │
+│ ngưỡng cảm biến (nhiệt độ pin, điện áp, phanh) + anomaly detect│
+│                                                                 │
+│ Đo thành công bằng gì (Metric có số)? [CẦN ĐO BASELINE THẬT]   │
+│ Giảm số lần downtime ngoài kế hoạch X% so với baseline; giảm   │
+│ chi phí thay linh kiện còn tốt trước hạn                       │
+│                                                                 │
+│ Quick Architecture: [ ] No AI  [x] Rule/ML cổ điển  [ ] LLM    │
+│                                                        [ ] Agent│
+│ Ghi chú: Threshold rules + gradient boosting trên feature      │
+│ engineering từ sensor. KHÔNG cần LLM — chi phí thấp, dễ audit  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ QUICK PROBLEM CARD #3                                         │
+│                                                                 │
+│ Bài toán (1 câu): Tự động phân loại & hỗ trợ soạn phản hồi     │
+│ khiếu nại CSKH tài xế/khách hàng                               │
+│ Công ty thành viên: [ ] VinFast  [x] Xanh SM  [ ] Vinhomes     │
+│                     [ ] Vinmec   [ ] Khác (Ghi rõ)________     │
+│                                                                 │
+│ Ai đang đau (Actor)? Nhân viên tổng đài CSKH, tài xế/khách     │
+│ hàng chờ phản hồi                                              │
+│                                                                 │
+│ Workflow thủ công hiện tại (3-5 bước):                         │
+│   1. Khiếu nại vào qua app/hotline ──> 2. NV đọc, phân loại    │
+│   thủ công ──> 3. NV tra cứu chính sách, soạn phản hồi ──>     │
+│   4. Gửi phản hồi, đóng ticket                                 │
+│                                                                 │
+│ Bước nào tốn thời gian/lỗi nhất? Bước 2-3 - phân loại và soạn  │
+│ phản hồi thủ công (⏱ cần đo thời gian trung bình/ticket thực   │
+│ tế tại Xanh SM, không dùng số ngành 30-40% làm target)         │
+│ AI có thể nhảy vào hỗ trợ ở bước nào? Bước 2-3 - LLM phân      │
+│ loại tự động + gợi ý draft phản hồi theo policy có sẵn (RAG)   │
+│                                                                 │
+│ Đo thành công bằng gì (Metric có số)? [CẦN ĐO BASELINE THẬT]   │
+│ Giảm thời gian xử lý trung bình/ticket X phút so với baseline; │
+│ tăng CSAT; giữ nguyên/giảm tỷ lệ escalation                    │
+│                                                                 │
+│ Quick Architecture: [ ] No AI  [ ] Rule  [x] LLM  [ ] Agent    │
+│ Ghi chú: Đây là use case hợp lý nhất cho LLM — input phi cấu   │
+│ trúc (ngôn ngữ tự nhiên), cần hiểu ngữ cảnh và soạn thảo        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -113,17 +190,69 @@ Chọn **top 3 bài toán** từ danh sách trên và hoàn thiện **3 Quick Pr
 * 🔄 **Handoff:** Điểm chuyển giao thông tin giữa người và hệ thống, hoặc giữa các bộ phận.
 * Ghi rõ thời gian vận hành trung bình: **Tổng cộng = ____ phút/lượt**.
 
+**Bài toán:** Xử lý khiếu nại CSKH tài xế/khách hàng — Xanh SM
+
+┌──────────────┐      🔄        ┌──────────────┐      🔄        ┌──────────────┐
+│ 1. Khách/Tài  │ ──────────────>│ 2. NV tổng    │ ──────────────>│ 3. NV tra    │
+│ xế gửi khiếu  │  (App/Hotline  │ đài đọc, phân │  (chuyển ticket│ cứu chính    │
+│ nại qua app   │   → hệ thống   │ loại thủ công │   theo loại    │ sách nội bộ  │
+│ hoặc hotline  │   ticket)      │ (billing/xe/  │   sang đúng    │ (wiki, file  │
+│               │                │ thái độ...)   │   bộ phận)     │ excel, SOP)  │
+└──────────────┘                └──────┬───────┘                └──────┬───────┘
+                                        │ 🔴                            │
+                                        │ Bottleneck:                   │
+                                        │ Phân loại sai/chậm             │
+                                        │ do khối lượng lớn,             │
+                                        │ thiếu ngữ cảnh rõ ràng         │
+                                        ▼                                ▼
+                                                                  ┌──────────────┐
+                                                                  │ 4. NV soạn    │
+                                                                  │ phản hồi thủ  │
+                                                                  │ công, gửi cho │
+                                                                  │ khách/tài xế  │
+                                                                  └──────┬───────┘
+                                                                         │ 🔴
+                                                                         │ Bottleneck:
+                                                                         │ Soạn thảo lặp lại
+                                                                         │ nội dung tương tự,
+                                                                         │ tốn thời gian nhất
+                                                                         ▼
+                                                                  ┌──────────────┐
+                                                                  │ 5. Đóng ticket,│
+                                                                  │ lưu log, (đôi  │
+                                                                  │ khi) khảo sát  │
+                                                                  │ CSAT           │
+                                                                  └──────────────┘
+
+**Chú thích:**
+🔴 Bottleneck #1 — Bước 2 (Phân loại thủ công): NV phải đọc toàn bộ nội dung, 
+    tự gán nhãn loại khiếu nại, dễ sai khi khối lượng ticket tăng đột biến 
+    (giờ cao điểm, sự cố hệ thống diện rộng)
+🔴 Bottleneck #2 — Bước 4 (Soạn phản hồi): Phần lớn khiếu nại lặp lại 
+    (hoàn tiền, lỗi app, xe bẩn...) nhưng NV vẫn soạn tay từng câu, 
+    không có template/gợi ý tự động theo ngữ cảnh
+
+🔄 Handoff #1 — Bước 1→2: Khách hàng/tài xế → Hệ thống ticket → NV tổng đài
+🔄 Handoff #2 — Bước 2→3: NV tổng đài → NV chuyên trách theo loại vấn đề 
+    (có thể khác phòng ban, gây độ trễ chờ chuyển giao)
+
+**Tổng thời gian vận hành trung bình: = _____ phút/lượt**
+   (Cần đo thực tế qua log hệ thống ticket — KHÔNG dùng số benchmark ngành. 
+   Gợi ý cách đo: lấy timestamp "ticket created" → "ticket closed" từ 
+   CRM/hotline system trong 2 tuần, tính trung bình theo từng loại khiếu nại)                                                                  
+
 ## 3.2. Problem Statement (6-field) & Metrics (15 min)
-Điền đầy đủ 6 trường thông tin của bài toán:
+
+**Bài toán:** Xử lý khiếu nại CSKH tài xế/khách hàng — Xanh SM
 
 | Field | Nội dung chi tiết |
 |---|---|
-| **1. Actor / Operator** | Ai đang thực hiện tác vụ hằng ngày? |
-| **2. Current Workflow** | Mô tả tóm tắt quy trình thủ công hiện tại và công cụ sử dụng. |
-| **3. Bottleneck** | Bước nào chậm, lỗi, hoặc cần xử lý ngôn ngữ tự động nhiều nhất? |
-| **4. Business Impact** | Tổn thất thực tế đo bằng thời gian, chi phí, hoặc SLA của Vingroup. |
-| **5. Success Metric** | AI giải quyết được thì đạt ngưỡng số mấy? (Ví dụ: *"85% vé được phân loại dưới 10s"*). |
-| **6. Operational Boundary** | AI được phép làm gì, TUYỆT ĐỐI không được làm gì, điểm nào cần duyệt? |
+| **1. Actor / Operator** | Nhân viên tổng đài CSKH (đọc, phân loại, soạn phản hồi); NV chuyên trách theo bộ phận (billing, kỹ thuật xe, thái độ tài xế); khách hàng/tài xế là người gửi và chờ phản hồi |
+| **2. Current Workflow** | Khiếu nại vào qua app/hotline → hệ thống tạo ticket → NV tổng đài đọc và tự phân loại thủ công theo kinh nghiệm cá nhân → chuyển ticket sang đúng bộ phận (nếu cần) → NV tra cứu chính sách nội bộ (wiki/file excel/SOP) → soạn phản hồi tay từng câu → gửi và đóng ticket. Công cụ: hệ thống ticket nội bộ + tài liệu chính sách rời rạc, chưa có tra cứu tập trung |
+| **3. Bottleneck** | Bước phân loại (đọc hiểu nội dung tự do, gán nhãn thủ công, dễ sai khi khối lượng tăng đột biến) và bước soạn phản hồi (phần lớn nội dung lặp lại nhưng vẫn gõ tay từng lần) — đây là 2 bước cần xử lý ngôn ngữ tự nhiên (NLP) nhiều nhất |
+| **4. Business Impact** | [CẦN ĐO BASELINE THẬT từ log CRM/hotline 2 tuần] — ước tính sơ bộ: thời gian xử lý trung bình/ticket, số ticket tồn đọng giờ cao điểm, tỷ lệ escalation do phản hồi chậm/sai, ảnh hưởng đến điểm CSAT và SLA nội bộ của Xanh SM |
+| **5. Success Metric** | VD (cần điền số thật sau khi đo baseline): "≥80% ticket được phân loại đúng trong <10 giây"; "Giảm thời gian xử lý trung bình/ticket từ X phút baseline xuống dưới Y phút"; "CSAT không giảm hoặc tăng ≥Z điểm sau triển khai" |
+| **6. Operational Boundary** | **Được làm:** phân loại ticket, gợi ý/draft nội dung phản hồi dựa trên policy có sẵn (RAG), tóm tắt ngữ cảnh cho NV. **TUYỆT ĐỐI không được:** tự động gửi phản hồi liên quan đến hoàn tiền/bồi thường mà không qua duyệt người; tự ý cam kết chính sách ngoài SOP; xử lý khiếu nại liên quan an toàn/tai nạn mà không escalate ngay cho người. **Cần duyệt (human-in-the-loop):** mọi phản hồi có giá trị hoàn tiền/bồi thường vượt ngưỡng, mọi ticket được gắn cờ nhạy cảm (khiếu nại pháp lý, an toàn, truyền thông) |
 
 ## 3.3. Future-State Flow & AI Fit (25 min)
 * **Xác định mức AI Fit (AI-Fit Matrix):** Giải pháp thuộc nhóm nào? [ ] Rule / State-Machine [ ] LLM Feature [ ] Agentic Loop.
